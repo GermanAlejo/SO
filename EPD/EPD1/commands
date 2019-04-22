@@ -1,0 +1,64 @@
+Commands for EPD1
+
+-Creating a file called "$ SHELL" -> touch "$ SHELL" //all commands refering this file need the "" to identify the file
+
+-How would you delete a file that starts with the # symbol? --> Same as before
+
+-How would you believe and then delete a file that starts with the character "-"?:
+$ touch -- -abc.txt		[Option #1]
+$ touch ./-abc.txt		[Option #2]
+
+-What happens when executing these commands in sequence: echo hello> test.txt. Echo bye >> test.txt echo
+bye >> test.txt ?. View the test.txt content with the cat command. What if we now run "echo good> test.txt"?
+
+echo writes the text before and after the file name into the file thus the second comand is interpreted as text by the first echo and as a command by the shell
+
+-Create two files called input1.txt and input2.txt, each containing 10 lines of text. What is the effect of the
+command cat input1.txt input2.txt> output.txt
+
+The result is the mix of the two files puting the text of the second file after the first one
+
+-What is the effect of the sort input.txt | Uniq> output.txt? Creates imput.txt as union of imput1 and 2.
+
+
+
+-What is the output of the echo {con, pre} {sent, fer} {s, ed} command?
+
+
+-Copy your / etc / passwd and / etc / group files into your directory with a single command as if you could specify / etc only once.
+
+ cp -t play/ ../../etc/passwd ../../etc/group
+
+-After you have created two subdirectories, called play and work, in your home directory. Copy the contents of
+the work in play directory with a single command.
+
+cp -r -t play/ work/
+
+-Delete the work directory and all its contents with a single command.
+
+rm -r work/
+
+-Switch to a directory that is protected, try to delete all its contents. (Avoid / proc or / dev as a precaution)
+
+usuing sudo
+
+-Experiment with the command ls, what are the effects of the options I, d, R and F?
+
+  -I, --ignore=PATTERN       do not list implied entries matching shell PATTERN
+  -d, --directory            list directories themselves, not their contents
+  -R, --recursive            list subdirectories recursively
+  -F, --classify             append indicator (one of */=>@|) to entries
+
+-What is the effect of the cat command test.txt | Sort | Uniq
+
+Nothing
+
+-Create a file named private.txt, which contains two lines of text. How can you assign the permissions so that
+only the owner can read and write the file?
+
+chmod ug+rwx file.txt
+
+-How can all files ending with .txt be assigned permissions so that only the owner and the group can read and
+write the files? You experience more than one way.
+
+one way is giving permision to the folder
