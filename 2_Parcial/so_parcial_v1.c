@@ -50,7 +50,7 @@ int main () {
 	search.found_at = -1;
 	semaphoreStatus (0);//print semaphore status
 	sem_init(&sem, 0, MAXIMUM_CONNECTIONS); //(Ref al semaforo, con cuantos procesos se comparte, valor inicial del semáforo)
-	sleep(1);
+	//sleep(1);
 	printf ("[COMMON]initSearch.\n[COMMON]id = %d, status = %d, found_at = %d\n", search.id, search.status, search.found_at);	
 	printf("[MAIN]Search data initialized\n");
 	printf("[MAIN]Initializing search result mutex......search result mutex initialized.\n");
@@ -148,9 +148,6 @@ void *searchEngine () {
 	sem_wait(&sem);	
 	semaphoreStatus (1);//print status
 	
-		//lock search mutex
-	pthread_mutex_lock(&searchResMutex);//make sure the other threads wait for first one to finish
-
 	engine_id++;//increment engine_id(shared global var)
 	int x = engine_id; //Saves the value of engine_id that belongs to each searchEngine
 	printf("\t\t[SEARCH ENGINE %d] is searching.\n", x);
@@ -160,7 +157,9 @@ void *searchEngine () {
 	printf("\t\t[SEARCH ENGINE %d] The search engine must invest %d seconds.\n", x, time);
 	sleep (time);
 	
-	printf("\n\n\t\t\tSEARCHID: %d\n\n", search.id);
+	//printf("\n\n\t\t\tSEARCHID: %d\n\n", search.id);
+	//lock search mutex
+	pthread_mutex_lock(&searchResMutex);//make sure the other threads wait for first one to finish
 	
 	if (search.status != FOUND) {
 		printf("\t\t[SEARCH ENGINE %d] has found search id %d. Unlocked search result.\n", x, search.id);
