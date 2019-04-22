@@ -35,6 +35,7 @@ void semaphoreStatus (int status);//returns the status of the semaphore dependin
 sem_t sem; //Para el maximo de conexiones simultaneas.
 //binary semaphores
 pthread_mutex_t searchResMutex;//this semaphore controls all engines threads wait for the firts one to finish
+pthread_mutex_t syncMutex;
 
 int main () {
 	
@@ -44,7 +45,6 @@ int main () {
 	
 	srand(time(NULL));
 	
-
 	search.id = -1; 
 	search.status = 0;
 	search.found_at = -1;
@@ -55,7 +55,7 @@ int main () {
 	printf("[MAIN]Search data initialized\n");
 	printf("[MAIN]Initializing search result mutex......search result mutex initialized.\n");
 	resError = pthread_mutex_init(&searchResMutex, NULL);
-
+	resError = pthread_mutex_init(&syncMutex, NULL);
 	
 	printf("[MAIN]Starting userThread ......user started.\n");
 	pthread_t thread_user; 
@@ -67,9 +67,9 @@ int main () {
 	//destroy semaphores
 	sem_destroy(&sem);//non binary semaphore
 	pthread_mutex_destroy(&searchResMutex);
+	pthread_mutex_destroy(&syncMutex);
 	printf("[MAIN]Application has finished.\n");
 	printf("=========================================================================\n");
-	
 	
 	return resError; 
 }
@@ -148,9 +148,11 @@ void *searchEngine () {
 	sem_wait(&sem);	
 	semaphoreStatus (1);//print status
 	
+	pthread_mutex_lock(&syncMutex);
 	engine_id++;//increment engine_id(shared global var)
 	int x = engine_id; //Saves the value of engine_id that belongs to each searchEngine
 	printf("\t\t[SEARCH ENGINE %d] is searching.\n", x);
+	pthread_mutex_unlock(&syncMutex);
 	
 	int time =  rand()%5;//generate random number
 	//printf("\n\t\t\tTIME: %d\n", time);
