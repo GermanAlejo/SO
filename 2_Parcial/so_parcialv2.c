@@ -22,7 +22,7 @@ typedef struct {
 int cont = MAXIMUM_CONNECTIONS;
 
 //variables globales compartidas por hilos
-int engine_id = 0;
+int engine_id = 1;
 int resError = 0;//this variable saves returning values when creating threads or semaphores
 
 void *usuario (Search *search); 
@@ -33,11 +33,14 @@ void semaphoreStatus (int status);//returns the status of the semaphore dependin
 //non-binary semaphore
 sem_t sem; //Para el maximo de conexiones simultaneas.
 //binary semaphores
+pthread_mutex_t syncMutex;
+pthread_mutex_t dataMutex;
 pthread_mutex_t searchResMutex;//this semaphore controls all engines threads wait for the firts one to finish
 
 int main () {
 	
-	printf ("==========================================================================================\nUPO EPS Sistemas Operativos 2019\nPrueba Evaluable 2: Alejo Dominguez, German y Sanz Guijarro, Miguel Angel\n==========================================================================================\n");		
+	printf ("==========================================================================================\nUPO EPS Sistemas Operativos 2019\nPrueba Evaluable 2: Alejo Dominguez, German\n==========================================================================================\n");	
+	printf ("==========================================================================================\n<APELLIDO1> <APELLIDO2>,<NOMBRE>\n==========================================================================================\n");	
 
 	int *finalStatus = 0;
 	
@@ -52,20 +55,31 @@ int main () {
 	sleep(1);
 	printf ("[COMMON]initSearch.\n[COMMON]id = %d, status = %d, found_at = %d\n", search.id, search.status, search.found_at);	
 	printf("[MAIN]Search data initialized\n");
+	sleep(1);
+	printf("[MAIN]Initializing search data mutex......search data mutex initialized.\n");
+	resError = pthread_mutex_init(&dataMutex, NULL);
+	printf("[MAIN]Initializing search processing mutex......search processing mutex initialized.\n");
+	resError = pthread_mutex_init(&syncMutex, NULL);
 	printf("[MAIN]Initializing search result mutex......search result mutex initialized.\n");
 	resError = pthread_mutex_init(&searchResMutex, NULL);
 
 	
 	printf("[MAIN]Starting userThread ......user started.\n");
 	pthread_t thread_user; 
-	resError = pthread_create( &thread_user, NULL, (void *) usuario, &search);
+	resError = pthread_create( &thread_user, NULL, (void *) usuario, &search); //NULL esta puesto por poner algo, podría hacer falta cambiarlo.
 	//(Ref al hilo, atributos NULL = por defecto, funcion que ejecuta el hilo, argumento de entrada a la funcion)
+	//sleep(2);
 
 	pthread_join(thread_user, NULL); //wait for user
 	printf("[MAIN]User finished.\n");
+	semaphoreStatus (2);//print semaphore status
 	//destroy semaphores
 	sem_destroy(&sem);//non binary semaphore
+	pthread_mutex_destroy(&syncMutex);
+	printf("[MAIN]Search sinchronization mutex has been destroyed.\n");
+	pthread_mutex_destroy(&dataMutex);
 	pthread_mutex_destroy(&searchResMutex);
+	printf("[MAIN]Search data mutex has been destroyed.\n");
 	printf("[MAIN]Application has finished.\n");
 	printf("=========================================================================\n");
 	
@@ -75,7 +89,8 @@ int main () {
 
 void *usuario (Search *search) {
 	
-	sem_wait(&sem);
+	sem_wait(&sem); //Cada vez que un usario haga una busqueda -1 al semaforo. cuando vale 0 el usuario queda bloqueado hasta que los otros terminen.
+	//sleep(1);
 	semaphoreStatus (1);//print status
 
 	printf ("	[USER]Started.\n	[USER]Requesting search...\n");
@@ -88,17 +103,19 @@ void *usuario (Search *search) {
 	printf("[MAIN]Starting seekerThread......seekerThread started.\n");
 	pthread_t thread_seeker;
 	resError = pthread_create( &thread_seeker, NULL, (void *) buscador, &search);
+	sleep(1);
+	semaphoreStatus (1);//print status
 	
 	pthread_join(thread_seeker, NULL);//wait for seeker	
 	printf("[MAIN]Seeker finished.\n");
 	
-	printf("\t[USER]Search with text 1 resolved on searchEngine %d with status %d. Search result mutex has locked.\n", search->found_at, search->status);
+	printf("\t[USER]Search with text %d resolved on searchEngine %d with status %d. Search result mutex has locked.\n", search->id, search->found_at, search->status);
 	printf("\t[USER]Unlocking searchDataMutex...\n");
 
 	printf("\t[USER]Finished.\n");
 	
 
-	sem_post(&sem);
+	sem_post(&sem); //+1 al semaforo, asi nunca habra mas de 5 usuarios a la vez.
 	semaphoreStatus (2);//print status
 }
 
@@ -106,10 +123,12 @@ void *buscador (Search *search) {
 	
 	sem_wait(&sem);
 	
+	//while (search->found_at !=0){}
+	
 	//start search/seeker
 	printf ("	[SEEKER]Started.\n");
-
-	//new connection from search	
+	//new connection from search
+	
 	semaphoreStatus (1);
 	
 	//create array storing threads(engines)
@@ -120,21 +139,24 @@ void *buscador (Search *search) {
 	
 	//loop to create threads(engines)
 	for (i=0; i < NUMSEARCHENGINE; i++){
-		//printf("\t\t\tVUELTA %d %d", aux, i);
-
+		
 		resError = pthread_create(&pthreads[i], NULL, (void *)searchEngine, &search);
 		
 		printf ("	[SEEKER]Starting searchEngine %d...... searchEngine_id %d started.\n", i +1, i +1);
 		
 	}
 	printf ("	[SEEKER]All SearchEngine launched.\n	[SEEKER]Waiting for all search engines to finish.\n");
-	
+
+		
 	//do the wait and join here
 	for (i=0; i<NUMSEARCHENGINE; i++) {
 		
 		pthread_join(pthreads[i], NULL);
 		printf("\t[SEEKER] Search engine %d done.\n", i+1);
 	}
+		
+	
+	sleep(1);
 	
 	sem_post(&sem);
 	semaphoreStatus (2);//print status
@@ -144,34 +166,47 @@ void *buscador (Search *search) {
 
 void *searchEngine (Search *search) {
 
-	sem_wait(&sem);	
-	semaphoreStatus (1);//print status
+	sem_wait(&sem);
+	//sleep(1);
+	
 
-	engine_id++;//increment engine_id(shared global var)
-	int x = engine_id; //Saves the value of engine_id that belongs to each searchEngine
-	printf("\t\t[SEARCH ENGINE %d] is searching.\n", x);
 	
 	int time =  rand()%5;//generate random number
-	//printf("\n\t\t\tTIME: %d\n", time);
-	printf("\t\t[SEARCH ENGINE %d] The search engine must invest %d seconds.\n", x, time);
 	sleep (time);
 
+	//printf("\n\t\t\tTIME: %d\n", time);//debuggin time
+	
 	//lock search mutex
 	pthread_mutex_lock(&searchResMutex);//make sure the other threads wait for first one to finish
 	
+		
+	
+	semaphoreStatus (1);//print status
+	printf("\t\t[SEARCH ENGINE %d] is searching.\n", engine_id);
+	
+	printf("\t\t[SEARCH ENGINE %d] The search engine must invest %d seconds.\n", engine_id, time);
+	
+	
+	
 	if (search->status != FOUND) {
-		printf("\t\t[SEARCH ENGINE %d] has found search id %d. Unlocked search result.\n", x, search->id);
 		search->status = FOUND;
-		search->found_at = x;
+		search->found_at = engine_id;
 		search->id = 0;
-		printf("[COMMON]updateSearch: id: %d, status: %d, found_at: %d.\n", search->id, search->status, search->found_at);
+		printf("[COMMON]updateSearch: id: %d, status: %d, found_at: %d.\n", 
+			   search->id, search->status, search->found_at);
+		printf("\t\t[SEARCH ENGINE %d] has found search id %d. Unlocked search result.\n", engine_id,search->id);
 	}
 
-	printf("\t\t[SEARCH ENGINE %d] has finished.\n", x);
 	
+	
+	printf("\t\t[SEARCH ENGINE %d] has finished.\n", engine_id);
+	engine_id++;//increment engine_id(shared global var)
+		
 	pthread_mutex_unlock(&searchResMutex);
+
 	
 	sem_post(&sem);
+	//sleep(1);
 	semaphoreStatus(2);
 	
 }
